@@ -30,7 +30,7 @@ class NotificationService(private val context: Context) {
         return NotificationCompat.Builder(context, SCANNING_CHANNEL_ID)
             .setContentTitle("NearFind activo")
             .setContentText("Buscando dispositivos cercanos...")
-            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth) // Reemplazando el icono faltante
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
@@ -52,7 +52,7 @@ class NotificationService(private val context: Context) {
         val notification = NotificationCompat.Builder(context, DEVICE_DETECTION_CHANNEL_ID)
             .setContentTitle("Dispositivo cercano detectado")
             .setContentText("${device.name} está a ${device.getFormattedDistance()}")
-            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth) // Usando icono del sistema
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
@@ -76,7 +76,7 @@ class NotificationService(private val context: Context) {
         val notification = NotificationCompat.Builder(context, PAIRING_REQUEST_CHANNEL_ID)
             .setContentTitle("Nueva solicitud de emparejamiento")
             .setContentText("${request.requesterName} quiere conectarse contigo")
-            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth) // Usando icono del sistema
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)

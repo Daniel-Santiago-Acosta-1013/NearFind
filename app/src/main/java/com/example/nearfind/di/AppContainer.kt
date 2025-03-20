@@ -10,7 +10,6 @@ import com.example.nearfind.data.repository.BluetoothRepository
 import com.example.nearfind.data.repository.UserRepository
 import com.example.nearfind.util.UserManager
 import com.example.nearfind.util.DataStoreManager
-import com.example.nearfind.service.NotificationService
 import org.json.JSONObject
 
 class AppContainer(private val applicationContext: Context) {
@@ -45,16 +44,11 @@ class AppContainer(private val applicationContext: Context) {
     }
 
     val bleScanner by lazy {
-        BleScanner(applicationContext, userRepository)
+        BleScanner(applicationContext, userRepository = userRepository)
     }
 
     val bluetoothRepository by lazy {
         BluetoothRepository(bleScanner = bleScanner, connectionManager = bleConnectionManager)
-    }
-
-    // Notification Service
-    val notificationService by lazy {
-        NotificationService(applicationContext)
     }
 
     // JSON utility class

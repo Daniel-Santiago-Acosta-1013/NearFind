@@ -4,14 +4,9 @@ import android.app.Service
 import android.content.Intent
 import android.os.IBinder
 import android.os.PowerManager
-import androidx.core.app.NotificationCompat
 import com.example.nearfind.NearFindApplication
-import com.example.nearfind.NearFindApplication.Companion.SCANNING_CHANNEL_ID
-import com.example.nearfind.R
 import com.example.nearfind.bluetooth.BleScanner
 import com.example.nearfind.data.model.DistanceCategory
-import com.example.nearfind.data.model.NearbyDevice
-import com.example.nearfind.data.model.UserData
 import com.example.nearfind.util.Constants
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -23,7 +18,7 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class BluetoothScanService : Service() {
 
-    // En lugar de usar inyección, obtenemos las instancias desde el contenedor de la aplicación
+    // Obtenemos instancias de los managers a través del AppContainer
     private lateinit var bleScanner: BleScanner
     private lateinit var notificationService: NotificationService
 
@@ -35,9 +30,12 @@ class BluetoothScanService : Service() {
 
     override fun onCreate() {
         super.onCreate()
+
+        // Inicialización de dependencias desde AppContainer
         val appContainer = (application as NearFindApplication).appContainer
         bleScanner = appContainer.bleScanner
-        notificationService = appContainer.notificationService
+        notificationService = NotificationService(applicationContext)
+
         acquireWakeLock()
     }
 
