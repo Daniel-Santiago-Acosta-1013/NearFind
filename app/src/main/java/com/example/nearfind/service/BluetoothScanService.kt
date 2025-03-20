@@ -44,17 +44,18 @@ class BluetoothScanService : Service() {
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        // IMPORTANTE: Debemos llamar a startForeground inmediatamente para evitar que el sistema mate el servicio
+        startForeground(
+            Constants.SCANNING_NOTIFICATION_ID,
+            notificationService.createScanningNotification()
+        )
+
         if (isRunning.compareAndSet(false, true)) {
-            // Verificar permisos antes de iniciar el servicio en primer plano
+            // Verificar permisos antes de iniciar el escaneo
             if (!hasRequiredPermissions()) {
                 stopSelf()
                 return START_NOT_STICKY
             }
-
-            startForeground(
-                Constants.SCANNING_NOTIFICATION_ID,
-                notificationService.createScanningNotification()
-            )
 
             startScanning()
             startMonitoring()
@@ -83,7 +84,28 @@ class BluetoothScanService : Service() {
                     Manifest.permission.ACCESS_COARSE_LOCATION
                 ) == PackageManager.PERMISSION_GRANTED
 
-        return hasForegroundServiceLocation && hasLocationPermission
+        // Verificar permisos de Bluetooth
+        val hasBluetoothPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH_SCAN
+            ) == PackageManager.PERMISSION_GRANTED &&
+                    ActivityCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.BLUETOOTH_CONNECT
+                    ) == PackageManager.PERMISSION_GRANTED
+        } else {
+            ActivityCompat.checkSelfPermission(
+                this,
+                Manifest.permission.BLUETOOTH
+            ) == PackageManager.PERMISSION_GRANTED &&
+                    ActivityCompat.checkSelfPermission(
+                        this,
+                        Manifest.permission.BLUETOOTH_ADMIN
+                    ) == PackageManager.PERMISSION_GRANTED
+        }
+
+        return hasForegroundServiceLocation && hasLocationPermission && hasBluetoothPermission
     }
 
     private fun startScanning() {

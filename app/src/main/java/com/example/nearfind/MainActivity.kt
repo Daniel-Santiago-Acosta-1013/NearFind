@@ -4,18 +4,23 @@ import android.Manifest
 import android.content.Intent
 import android.os.Build
 import android.os.Bundle
+import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.navigation.compose.rememberNavController
 import com.example.nearfind.service.BluetoothScanService
 import com.example.nearfind.ui.navigation.NavGraph
 import com.example.nearfind.ui.theme.NearFindTheme
 import com.example.nearfind.util.PermissionManager
-import com.example.nearfind.util.UserManager
 
 class MainActivity : ComponentActivity() {
 
@@ -24,11 +29,13 @@ class MainActivity : ComponentActivity() {
         (application as NearFindApplication).appContainer.userManager
     }
 
+    // Variable para rastrear si los permisos han sido concedidos
+    private var permissionsGranted by mutableStateOf(false)
+
     private val requiredPermissions = mutableListOf(
         Manifest.permission.ACCESS_FINE_LOCATION,
         Manifest.permission.ACCESS_COARSE_LOCATION,
-        Manifest.permission.FOREGROUND_SERVICE,
-        Manifest.permission.FOREGROUND_SERVICE_LOCATION
+        Manifest.permission.FOREGROUND_SERVICE
     ).apply {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             add(Manifest.permission.BLUETOOTH_SCAN)
@@ -41,10 +48,29 @@ class MainActivity : ComponentActivity() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             add(Manifest.permission.POST_NOTIFICATIONS)
         }
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+            add(Manifest.permission.FOREGROUND_SERVICE_LOCATION)
+        }
     }.toTypedArray()
+
+    // Registro para solicitar permisos
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        permissionsGranted = permissions.values.all { it }
+        if (permissionsGranted) {
+            Toast.makeText(this, "Permisos concedidos", Toast.LENGTH_SHORT).show()
+        } else {
+            Toast.makeText(this, "Algunos permisos no fueron concedidos", Toast.LENGTH_LONG).show()
+        }
+    }
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+
+        // Solicitar permisos al iniciar la actividad
+        requestPermissionLauncher.launch(requiredPermissions)
 
         setContent {
             NearFindTheme {
@@ -53,10 +79,29 @@ class MainActivity : ComponentActivity() {
                     color = MaterialTheme.colorScheme.background
                 ) {
                     val navController = rememberNavController()
+
+                    // Solicitar permisos si aún no se han concedido
+                    LaunchedEffect(Unit) {
+                        if (!permissionsGranted) {
+                            requestPermissionLauncher.launch(requiredPermissions)
+                        }
+                    }
+
                     NavGraph(
                         navController = navController,
                         permissionManager = PermissionManager(this, requiredPermissions),
-                        startScanService = { startBluetoothScanService() },
+                        startScanService = {
+                            if (permissionsGranted) {
+                                startBluetoothScanService()
+                            } else {
+                                Toast.makeText(
+                                    this@MainActivity,
+                                    "Se requieren permisos para escanear dispositivos",
+                                    Toast.LENGTH_LONG
+                                ).show()
+                                requestPermissionLauncher.launch(requiredPermissions)
+                            }
+                        },
                         isUserRegistered = userManager.isUserRegistered(),
                         startDestination = if (userManager.isUserRegistered()) "home" else "onboarding"
                     )
@@ -66,11 +111,21 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startBluetoothScanService() {
-        val serviceIntent = Intent(this, BluetoothScanService::class.java)
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            startForegroundService(serviceIntent)
+        // Solo iniciar el servicio si los permisos han sido concedidos
+        if (permissionsGranted) {
+            val serviceIntent = Intent(this, BluetoothScanService::class.java)
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                startForegroundService(serviceIntent)
+            } else {
+                startService(serviceIntent)
+            }
         } else {
-            startService(serviceIntent)
+            Toast.makeText(
+                this,
+                "No se pueden escanear dispositivos sin los permisos necesarios",
+                Toast.LENGTH_LONG
+            ).show()
+            requestPermissionLauncher.launch(requiredPermissions)
         }
     }
 }
