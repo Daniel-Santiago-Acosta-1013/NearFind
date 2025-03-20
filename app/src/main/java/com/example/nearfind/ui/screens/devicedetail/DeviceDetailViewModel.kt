@@ -45,7 +45,9 @@ class DeviceDetailViewModel(
     }
 
     fun connectToDevice() {
-        bluetoothRepository.connectToDevice(deviceId)
+        viewModelScope.launch {
+            bluetoothRepository.connectToDevice(deviceId)
+        }
     }
 
     fun disconnectFromDevice() {

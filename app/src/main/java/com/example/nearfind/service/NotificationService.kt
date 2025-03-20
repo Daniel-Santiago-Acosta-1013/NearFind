@@ -14,14 +14,8 @@ import com.example.nearfind.R
 import com.example.nearfind.data.model.NearbyDevice
 import com.example.nearfind.data.model.PairingRequest
 import com.example.nearfind.util.Constants
-import dagger.hilt.android.qualifiers.ApplicationContext
-import javax.inject.Inject
-import javax.inject.Singleton
 
-@Singleton
-class NotificationService @Inject constructor(
-    @ApplicationContext private val context: Context
-) {
+class NotificationService(private val context: Context) {
     private val notificationManager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
     fun createScanningNotification(): Notification {
@@ -36,7 +30,7 @@ class NotificationService @Inject constructor(
         return NotificationCompat.Builder(context, SCANNING_CHANNEL_ID)
             .setContentTitle("NearFind activo")
             .setContentText("Buscando dispositivos cercanos...")
-            .setSmallIcon(R.drawable.ic_bluetooth_searching)
+            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth) // Reemplazando el icono faltante
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .setOngoing(true)
@@ -58,7 +52,7 @@ class NotificationService @Inject constructor(
         val notification = NotificationCompat.Builder(context, DEVICE_DETECTION_CHANNEL_ID)
             .setContentTitle("Dispositivo cercano detectado")
             .setContentText("${device.name} está a ${device.getFormattedDistance()}")
-            .setSmallIcon(R.drawable.ic_bluetooth_connected)
+            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth) // Usando icono del sistema
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)
@@ -82,7 +76,7 @@ class NotificationService @Inject constructor(
         val notification = NotificationCompat.Builder(context, PAIRING_REQUEST_CHANNEL_ID)
             .setContentTitle("Nueva solicitud de emparejamiento")
             .setContentText("${request.requesterName} quiere conectarse contigo")
-            .setSmallIcon(R.drawable.ic_bluetooth_connected)
+            .setSmallIcon(android.R.drawable.stat_sys_data_bluetooth) // Usando icono del sistema
             .setContentIntent(pendingIntent)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setAutoCancel(true)

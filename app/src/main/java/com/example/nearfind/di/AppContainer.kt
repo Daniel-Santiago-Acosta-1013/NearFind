@@ -10,6 +10,7 @@ import com.example.nearfind.data.repository.BluetoothRepository
 import com.example.nearfind.data.repository.UserRepository
 import com.example.nearfind.util.UserManager
 import com.example.nearfind.util.DataStoreManager
+import com.example.nearfind.service.NotificationService
 import org.json.JSONObject
 
 class AppContainer(private val applicationContext: Context) {
@@ -33,19 +34,6 @@ class AppContainer(private val applicationContext: Context) {
         UserManager.getInstance(applicationContext)
     }
 
-    // Simulación de BluetoothManager para compatibilidad
-    // Esta clase wrapper mantendrá la compatibilidad con el código existente
-    class BluetoothManagerWrapper(private val context: Context) {
-        val adapter: BluetoothAdapter?
-            get() = (context.getSystemService(Context.BLUETOOTH_SERVICE) as? AndroidBluetoothManager)?.adapter
-
-        // Añade aquí cualquier otra funcionalidad que necesites de tu BluetoothManager personalizado
-    }
-
-    val bluetoothManager by lazy {
-        BluetoothManagerWrapper(applicationContext)
-    }
-
     // Repositories
     val userRepository by lazy {
         UserRepository(userManager = userManager, dataStoreManager = dataStoreManager)
@@ -53,15 +41,20 @@ class AppContainer(private val applicationContext: Context) {
 
     // Bluetooth components
     val bleConnectionManager by lazy {
-        BleConnectionManager(applicationContext, bluetoothManager = bluetoothManager)
+        BleConnectionManager(applicationContext)
     }
 
     val bleScanner by lazy {
-        BleScanner(applicationContext, bluetoothManager = bluetoothManager, userRepository = userRepository)
+        BleScanner(applicationContext, userRepository)
     }
 
     val bluetoothRepository by lazy {
         BluetoothRepository(bleScanner = bleScanner, connectionManager = bleConnectionManager)
+    }
+
+    // Notification Service
+    val notificationService by lazy {
+        NotificationService(applicationContext)
     }
 
     // JSON utility class
