@@ -10,11 +10,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Share
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material3.AlertDialog
@@ -39,6 +41,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -51,6 +54,8 @@ import com.example.nearfind.ui.components.DeviceCard
 @Composable
 fun PairingScreen(
     navigateBack: () -> Unit,
+    isBluetoothEnabled: Boolean,
+    requestBluetoothEnable: () -> Unit,
     viewModel: PairingViewModel = viewModel(factory = ViewModelFactory.Factory)
 ) {
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
@@ -64,8 +69,8 @@ fun PairingScreen(
     var deviceToUnpair by remember { mutableStateOf<NearbyDevice?>(null) }
 
     LaunchedEffect(key1 = true) {
-        // Iniciar escaneo automáticamente
-        if (!isScanning) {
+        // Iniciar escaneo automáticamente si Bluetooth está habilitado
+        if (!isScanning && isBluetoothEnabled) {
             viewModel.toggleScan()
         }
     }
@@ -82,131 +87,183 @@ fun PairingScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { viewModel.toggleScan() }) {
-                if (isScanning) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.padding(8.dp),
-                        color = MaterialTheme.colorScheme.onSecondary
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Iniciar escaneo"
-                    )
+            if (isBluetoothEnabled) {
+                FloatingActionButton(onClick = { viewModel.toggleScan() }) {
+                    if (isScanning) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(8.dp),
+                            color = MaterialTheme.colorScheme.onSecondary
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Iniciar escaneo"
+                        )
+                    }
                 }
             }
         }
     ) { paddingValues ->
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(paddingValues)
-                .padding(16.dp)
-        ) {
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.setSearchQuery(it) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Buscar dispositivos") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) }
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            if (pairedDevices.isNotEmpty()) {
-                Text(
-                    text = "Dispositivos emparejados",
-                    style = MaterialTheme.typography.titleMedium
+        // Verificar si el Bluetooth está habilitado
+        if (!isBluetoothEnabled) {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Bluetooth,
+                    contentDescription = "Bluetooth",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(64.dp)
                 )
 
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(pairedDevices) { device ->
-                        Card(
-                            modifier = Modifier.fillMaxWidth(),
-                            onClick = {
-                                deviceToUnpair = device
-                                showUnpairDialog = true
-                            }
-                        ) {
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(16.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column(
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = device.name,
-                                        style = MaterialTheme.typography.titleMedium
-                                    )
-                                    Text(
-                                        text = device.userData?.name ?: "Usuario desconocido",
-                                        style = MaterialTheme.typography.bodySmall
-                                    )
-                                }
+                Spacer(modifier = Modifier.height(16.dp))
 
-                                IconButton(onClick = {
+                Text(
+                    text = "Bluetooth desactivado",
+                    style = MaterialTheme.typography.titleLarge,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(8.dp))
+
+                Text(
+                    text = "Es necesario activar el Bluetooth para buscar dispositivos",
+                    style = MaterialTheme.typography.bodyMedium,
+                    textAlign = TextAlign.Center
+                )
+
+                Spacer(modifier = Modifier.height(24.dp))
+
+                Button(
+                    onClick = requestBluetoothEnable
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Bluetooth,
+                        contentDescription = null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Activar Bluetooth")
+                }
+            }
+        } else {
+            // Contenido normal cuando el Bluetooth está activado
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(paddingValues)
+                    .padding(16.dp)
+            ) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.setSearchQuery(it) },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Buscar dispositivos") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) }
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (pairedDevices.isNotEmpty()) {
+                    Text(
+                        text = "Dispositivos emparejados",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        contentPadding = PaddingValues(vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(pairedDevices) { device ->
+                            Card(
+                                modifier = Modifier.fillMaxWidth(),
+                                onClick = {
                                     deviceToUnpair = device
                                     showUnpairDialog = true
-                                }) {
-                                    Icon(
-                                        imageVector = Icons.Default.Share,
-                                        contentDescription = "Desemparejar",
-                                        tint = MaterialTheme.colorScheme.primary
-                                    )
+                                }
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(16.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Column(
+                                        modifier = Modifier.weight(1f)
+                                    ) {
+                                        Text(
+                                            text = device.name,
+                                            style = MaterialTheme.typography.titleMedium
+                                        )
+                                        Text(
+                                            text = device.userData?.name ?: "Usuario desconocido",
+                                            style = MaterialTheme.typography.bodySmall
+                                        )
+                                    }
+
+                                    IconButton(onClick = {
+                                        deviceToUnpair = device
+                                        showUnpairDialog = true
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Default.Share,
+                                            contentDescription = "Desemparejar",
+                                            tint = MaterialTheme.colorScheme.primary
+                                        )
+                                    }
                                 }
                             }
                         }
                     }
+
+                    Spacer(modifier = Modifier.height(16.dp))
                 }
 
-                Spacer(modifier = Modifier.height(16.dp))
-            }
+                Text(
+                    text = "Dispositivos disponibles",
+                    style = MaterialTheme.typography.titleMedium
+                )
 
-            Text(
-                text = "Dispositivos disponibles",
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            if (devices.isEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = if (isScanning) {
-                            "Buscando dispositivos..."
-                        } else {
-                            "No se encontraron dispositivos"
-                        },
-                        style = MaterialTheme.typography.bodyLarge
-                    )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(devices) { device ->
-                        DeviceCard(
-                            device = device,
-                            onClick = {
-                                selectedDevice = device
-                            }
+                if (devices.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isScanning) {
+                                "Buscando dispositivos..."
+                            } else {
+                                "No se encontraron dispositivos"
+                            },
+                            style = MaterialTheme.typography.bodyLarge
                         )
+                    }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentPadding = PaddingValues(vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(devices) { device ->
+                            DeviceCard(
+                                device = device,
+                                onClick = {
+                                    selectedDevice = device
+                                }
+                            )
+                        }
                     }
                 }
             }

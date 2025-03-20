@@ -1,9 +1,11 @@
 package com.example.nearfind.ui.screens.home
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,10 +15,13 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Bluetooth
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Warning
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
@@ -35,6 +40,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -53,6 +59,8 @@ fun HomeScreen(
     navigateToPairingRequests: () -> Unit,
     permissionManager: PermissionManager,
     startScanService: () -> Unit,
+    isBluetoothEnabled: Boolean,
+    requestBluetoothEnable: () -> Unit,
     viewModel: HomeViewModel = viewModel(factory = ViewModelFactory.Factory)
 ) {
     val isScanning by viewModel.isScanning.collectAsStateWithLifecycle()
@@ -63,9 +71,9 @@ fun HomeScreen(
     val userInfo by viewModel.userInfo.collectAsStateWithLifecycle()
 
     // Evitamos llamar directamente a RequestPermissions
-    // En su lugar, iniciamos el servicio directamente
+    // En su lugar, iniciamos el servicio si los permisos están concedidos y el Bluetooth está habilitado
     LaunchedEffect(Unit) {
-        if (permissionManager.hasPermissions()) {
+        if (permissionManager.hasPermissions() && isBluetoothEnabled) {
             startScanService()
         }
     }
@@ -123,17 +131,19 @@ fun HomeScreen(
             )
         },
         floatingActionButton = {
-            FloatingActionButton(onClick = { viewModel.toggleScan() }) {
-                if (isScanning) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.padding(8.dp),
-                        color = MaterialTheme.colorScheme.onSecondary
-                    )
-                } else {
-                    Icon(
-                        imageVector = Icons.Default.Search,
-                        contentDescription = "Iniciar escaneo"
-                    )
+            if (isBluetoothEnabled) {
+                FloatingActionButton(onClick = { viewModel.toggleScan() }) {
+                    if (isScanning) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.padding(8.dp),
+                            color = MaterialTheme.colorScheme.onSecondary
+                        )
+                    } else {
+                        Icon(
+                            imageVector = Icons.Default.Search,
+                            contentDescription = "Iniciar escaneo"
+                        )
+                    }
                 }
             }
         }
@@ -144,6 +154,62 @@ fun HomeScreen(
                 .padding(paddingValues)
                 .padding(16.dp)
         ) {
+            // Mostrar advertencia si el Bluetooth no está habilitado
+            if (!isBluetoothEnabled) {
+                Card(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(bottom = 16.dp)
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(16.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Warning,
+                                contentDescription = "Advertencia",
+                                tint = Color.Red,
+                                modifier = Modifier.size(24.dp)
+                            )
+                            Spacer(modifier = Modifier.padding(horizontal = 8.dp))
+                            Text(
+                                text = "Bluetooth desactivado",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = Color.Red
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.height(8.dp))
+
+                        Text(
+                            text = "Para utilizar la aplicación, es necesario activar el Bluetooth",
+                            style = MaterialTheme.typography.bodyMedium,
+                            textAlign = TextAlign.Center
+                        )
+
+                        Spacer(modifier = Modifier.height(16.dp))
+
+                        Button(
+                            onClick = requestBluetoothEnable
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Bluetooth,
+                                contentDescription = "Bluetooth",
+                                modifier = Modifier.size(18.dp)
+                            )
+                            Spacer(modifier = Modifier.padding(horizontal = 4.dp))
+                            Text("Activar Bluetooth")
+                        }
+                    }
+                }
+            }
+
             // Mostrar información del usuario
             Card(
                 modifier = Modifier
@@ -172,46 +238,80 @@ fun HomeScreen(
                 }
             }
 
-            OutlinedTextField(
-                value = searchQuery,
-                onValueChange = { viewModel.setSearchQuery(it) },
-                modifier = Modifier.fillMaxWidth(),
-                placeholder = { Text("Buscar dispositivos") },
-                leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) }
-            )
+            if (isBluetoothEnabled) {
+                OutlinedTextField(
+                    value = searchQuery,
+                    onValueChange = { viewModel.setSearchQuery(it) },
+                    modifier = Modifier.fillMaxWidth(),
+                    placeholder = { Text("Buscar dispositivos") },
+                    leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) }
+                )
 
-            Spacer(modifier = Modifier.height(16.dp))
+                Spacer(modifier = Modifier.height(16.dp))
 
-            if (closeDevices.isNotEmpty()) {
+                if (closeDevices.isNotEmpty()) {
+                    Text(
+                        text = "Dispositivos cercanos",
+                        style = MaterialTheme.typography.titleMedium
+                    )
+
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(120.dp),
+                        contentPadding = PaddingValues(vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(closeDevices) { device ->
+                            DeviceCard(
+                                device = device,
+                                onClick = { navigateToDeviceDetail(device.id) }
+                            )
+                        }
+                    }
+
+                    Divider(modifier = Modifier.padding(vertical = 16.dp))
+                }
+
                 Text(
-                    text = "Dispositivos cercanos",
+                    text = "Todos los dispositivos",
                     style = MaterialTheme.typography.titleMedium
                 )
 
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(120.dp),
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(closeDevices) { device ->
-                        DeviceCard(
-                            device = device,
-                            onClick = { navigateToDeviceDetail(device.id) }
+                if (devices.isEmpty()) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = if (isScanning) {
+                                "Buscando dispositivos..."
+                            } else {
+                                "No se encontraron dispositivos"
+                            },
+                            style = MaterialTheme.typography.bodyLarge
                         )
                     }
+                } else {
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .weight(1f),
+                        contentPadding = PaddingValues(vertical = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp)
+                    ) {
+                        items(devices) { device ->
+                            DeviceCard(
+                                device = device,
+                                onClick = { navigateToDeviceDetail(device.id) }
+                            )
+                        }
+                    }
                 }
-
-                Divider(modifier = Modifier.padding(vertical = 16.dp))
-            }
-
-            Text(
-                text = "Todos los dispositivos",
-                style = MaterialTheme.typography.titleMedium
-            )
-
-            if (devices.isEmpty()) {
+            } else {
+                // Espacio en blanco cuando el Bluetooth está desactivado
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -219,28 +319,11 @@ fun HomeScreen(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = if (isScanning) {
-                            "Buscando dispositivos..."
-                        } else {
-                            "No se encontraron dispositivos"
-                        },
-                        style = MaterialTheme.typography.bodyLarge
+                        text = "Activa el Bluetooth para detectar dispositivos cercanos",
+                        style = MaterialTheme.typography.bodyLarge,
+                        textAlign = TextAlign.Center,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
-                }
-            } else {
-                LazyColumn(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f),
-                    contentPadding = PaddingValues(vertical = 8.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    items(devices) { device ->
-                        DeviceCard(
-                            device = device,
-                            onClick = { navigateToDeviceDetail(device.id) }
-                        )
-                    }
                 }
             }
         }

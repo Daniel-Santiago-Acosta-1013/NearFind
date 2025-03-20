@@ -20,7 +20,9 @@ fun NavGraph(
     permissionManager: PermissionManager,
     startScanService: () -> Unit,
     isUserRegistered: Boolean,
-    startDestination: String
+    isBluetoothEnabled: Boolean,
+    startDestination: String,
+    requestBluetoothEnable: () -> Unit
 ) {
     NavHost(
         navController = navController,
@@ -51,7 +53,9 @@ fun NavGraph(
                     navController.navigate(Screen.PairingRequests.route)
                 },
                 permissionManager = permissionManager,
-                startScanService = startScanService
+                startScanService = startScanService,
+                isBluetoothEnabled = isBluetoothEnabled,
+                requestBluetoothEnable = requestBluetoothEnable
             )
         }
 
@@ -80,7 +84,9 @@ fun NavGraph(
             PairingScreen(
                 navigateBack = {
                     navController.popBackStack()
-                }
+                },
+                isBluetoothEnabled = isBluetoothEnabled,
+                requestBluetoothEnable = requestBluetoothEnable
             )
         }
 
