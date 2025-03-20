@@ -1,9 +1,13 @@
 package com.example.nearfind.service
 
+import android.Manifest
 import android.app.Service
 import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
 import android.os.IBinder
 import android.os.PowerManager
+import androidx.core.app.ActivityCompat
 import com.example.nearfind.NearFindApplication
 import com.example.nearfind.bluetooth.BleScanner
 import com.example.nearfind.data.model.DistanceCategory
@@ -41,6 +45,12 @@ class BluetoothScanService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         if (isRunning.compareAndSet(false, true)) {
+            // Verificar permisos antes de iniciar el servicio en primer plano
+            if (!hasRequiredPermissions()) {
+                stopSelf()
+                return START_NOT_STICKY
+            }
+
             startForeground(
                 Constants.SCANNING_NOTIFICATION_ID,
                 notificationService.createScanningNotification()
@@ -51,6 +61,29 @@ class BluetoothScanService : Service() {
         }
 
         return START_STICKY
+    }
+
+    private fun hasRequiredPermissions(): Boolean {
+        // Verificar permiso FOREGROUND_SERVICE_LOCATION (obligatorio para Android 14)
+        val hasForegroundServiceLocation =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.FOREGROUND_SERVICE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+            } else true
+
+        // Verificar al menos uno de los permisos de ubicación
+        val hasLocationPermission = ActivityCompat.checkSelfPermission(
+            this,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED ||
+                ActivityCompat.checkSelfPermission(
+                    this,
+                    Manifest.permission.ACCESS_COARSE_LOCATION
+                ) == PackageManager.PERMISSION_GRANTED
+
+        return hasForegroundServiceLocation && hasLocationPermission
     }
 
     private fun startScanning() {
